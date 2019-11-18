@@ -10,7 +10,8 @@
 
 Master_1对外映射的端口是3309，Slave_1对外映射的端口是3310。因为docker容器是相互独立的，每个容器有其独立的ip,所以不同容器使用相同的端口是不会有冲突的。  
 对于容器的独立ip,可以通过：  
-> docker inspect --format='{{.NetworkSettings.IPAddress}}' mysql_master_1  
+> docker inspect --format='{{.NetworkSettings.IPAddress}}' mysql_master_1      
+
 *配置Master*  
 通过```docker exec -it mysql_master_1 /bin/bash```命令进入到Master容器内部，切换到/etc/mysql目录下，然后对my.cnf进行编辑。因为docker容器内部没有安装vim，所以需要先通过apt-get update命令，之后使用apt-get install vim命令来安装vim。  
 
@@ -24,8 +25,10 @@ log-bin=mysql-bin
 
 配置完成之后，需要重启mysql服务使配置生效。可以通过重新启动容器 docker restart mysql_master_1来生效服务配置。  
 下一步在Master数据库创建数据同步用户，先授权slave用户REPLICATION SLAVE权限和REPLICATION CLIENT权限，用于在主从库之间同步数据。  
-> create user 'slave'@'%' identified by '123456';  
-> grant replication slave,replication client on *.* to 'slave'@'%';    
+```   
+create user 'slave'@'%' identified by '123456';  
+grant replication slave,replication client on *.* to 'slave'@'%';    
+```    
 
 **配置Slave**  
 在Slave配置文件my.cnf中添加如下配置：  
@@ -39,11 +42,15 @@ relay_log=edu-mysql-relay-bin
 ```      
 
 配置后的slave也需要重启mysql服务和docker容器。  
+
 **链接Master和Slave**    
+
 在Master容器进入mysql，执行 show master status;  
 获取File和Position字段的值，在后面的操作完成之前，需要保证Master库不能做任何操作，否则将会引起状态变化，File和Position字段的值改变。  
 接下来，在Slave容器中进入mysql，然后执行：  
-> change master to master_host='172.17.0.2',master_port=3306,master_user='slave',master_password='123456',master_log_file='mysql-bin.000001',master_log_pos=907,master_connect_retry=30;     
+```    
+change master to master_host='172.17.0.2',master_port=3306,master_user='slave',master_password='123456',master_log_file='mysql-bin.000001',master_log_pos=907,master_connect_retry=30;     
+```   
 
 命令说明：  
 master_host:指Master容器的独立ip  
